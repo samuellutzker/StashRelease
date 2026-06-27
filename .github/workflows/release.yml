@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            archive: stash-server-linux-x86_64.tar.gz
+            use_cross: true
+
+          - name: Linux ARM64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            archive: stash-server-linux-aarch64.tar.gz
+            use_cross: true
+
+          - name: macOS ARM64 (Apple Silicon)
+            os: macos-latest
+            target: aarch64-apple-darwin
+            archive: stash-server-macos-arm64.tar.gz
+            use_cross: false
+
+          - name: macOS x86_64 (Intel)
+            os: macos-latest
+            target: x86_64-apple-darwin
+            archive: stash-server-macos-x86_64.tar.gz
+            use_cross: false
+
+          - name: Windows x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: stash-server-windows-x86_64.zip
+            use_cross: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo (native targets)
+        if: ${{ !matrix.use_cross }}
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server
+
+      - name: Install cross
+        if: matrix.use_cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Build (cross)
+        if: matrix.use_cross
+        working-directory: server
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Build (cargo)
+        if: ${{ !matrix.use_cross }}
+        working-directory: server
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd server/target/${{ matrix.target }}/release
+          tar czf "$GITHUB_WORKSPACE/${{ matrix.archive }}" stash-server
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd server/target/${{ matrix.target }}/release
+          Compress-Archive -Path stash-server.exe -DestinationPath "$env:GITHUB_WORKSPACE/${{ matrix.archive }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+
+  apk:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+      - name: Create Room schema directory
+        run: mkdir -p app/schemas
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stash-android.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+  release:
+    needs: [build, apk]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+
+      - name: Generate SHA256SUMS
+        working-directory: dist
+        run: sha256sum *.tar.gz *.zip *.apk > SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.apk
+            dist/SHA256SUMS
+          generate_release_notes: true

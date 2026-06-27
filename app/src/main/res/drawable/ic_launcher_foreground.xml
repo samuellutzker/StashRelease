@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Stash icon (concept B, variant 2 "Drop"): an item falling into a tray. The arrow is a
+     vertical gradient (light orange at the top deepening to orange) for a sense of the item
+     dropping. Art kept within the adaptive-icon safe zone (central ~66 of the 108 viewport). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Down arrow (shaft + head as one outline) with a top->bottom gradient -->
+    <path android:pathData="M47,26 L61,26 L61,46 L69,46 L54,67 L39,46 L47,46 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54" android:startY="26"
+                android:endX="54" android:endY="67"
+                android:type="linear">
+                <item android:offset="0" android:color="#FFFFC246"/>
+                <item android:offset="1" android:color="#FFFF8F00"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Open tray -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M38,69 L44,81 L64,81 L70,69"/>
+</vector>

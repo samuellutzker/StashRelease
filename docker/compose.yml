@@ -1,0 +1,16 @@
+services:
+  stash-server:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "9876:9876"   # sync WebSocket — clients connect here
+      - "9877:9877"   # web UI — open in browser to manage files
+    volumes:
+      - stash-data:/data
+    environment:
+      - STASH_PASSWORD=changeme   # ← set your password here
+    restart: unless-stopped
+
+volumes:
+  stash-data:

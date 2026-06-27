@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Stash</string>
+    <string name="empty_stash">Nothing here yet</string>
+    <string name="empty_stash_sub">Use the share button in any app to save something here instantly</string>
+    <string name="empty_filter">No %1$s yet</string>
+    <string name="empty_search">No matches</string>
+    <string name="empty_search_sub">Try a different search</string>
+</resources>

@@ -1,0 +1,27 @@
+# Android
+*.iml
+keystore.properties
+*.jks
+.gradle/
+app/schemas/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+google-services.json
+
+# Rust server
+server/target/
+server/data/
+server/*.toml
+
+# Local agent / channel state
+.claude/
+
+# Local design scratch (mockups, generators, preview renders)
+mockups/

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rounded background for the list thumbnail box. Solid color is tinted per item type
+     in StashAdapter (light tint of the type color). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="12dp" />
+    <solid android:color="#F0F0F8" />
+</shape>

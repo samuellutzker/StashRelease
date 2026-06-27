@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stash</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'><defs><linearGradient id='g' x1='0' y1='26' x2='0' y2='67' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='%23FFC246'/><stop offset='1' stop-color='%23FF8F00'/></linearGradient></defs><rect width='108' height='108' rx='16' fill='%231A237E'/><path fill='url(%23g)' d='M47,26 L61,26 L61,46 L69,46 L54,67 L39,46 L47,46 Z'/><path fill='none' stroke='%23FFFFFF' stroke-width='6' stroke-linecap='round' stroke-linejoin='round' d='M38,69 L44,81 L64,81 L70,69'/></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f0f17;--surface:#1a1a2e;--surface2:#252540;--border:#2e2e50;
+  --text:#e0e0f0;--dim:#7878a0;--accent:#FF8F00;--accent-h:#FFB300;
+  --danger:#e05060;
+  --c-link:#1976D2;--c-image:#7B1FA2;--c-video:#C62828;--c-audio:#00838F;
+  --c-document:#E65100;--c-text:#2E7D32;--c-archive:#4527A0;
+  --c-apk:#558B2F;--c-contact:#00695C;--c-other:#546E7A;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── Login ── */
+#login{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}
+.lcard{background:var(--surface);border-radius:16px;padding:36px;width:100%;max-width:360px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.lcard h1{font-size:26px;margin-bottom:6px}
+.lcard p{color:var(--dim);margin-bottom:28px;font-size:14px}
+label{display:block;font-size:13px;color:var(--dim);margin-bottom:5px}
+input[type=password],input[type=text]{width:100%;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;outline:none;transition:border-color .2s}
+input:focus{border-color:var(--accent)}
+.ibg{margin-bottom:16px}
+.btn-primary{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px;transition:background .2s}
+.btn-primary:hover{background:var(--accent-h)}
+.btn-primary:disabled{opacity:.6;cursor:default}
+.err{color:var(--danger);font-size:13px;margin-top:10px;display:none}
+
+/* ── App ── */
+#app{display:none;flex-direction:column;min-height:100vh}
+#app.on{display:flex}
+
+/* Header */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;position:sticky;top:0;z-index:50;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.connstat{font-size:12px;color:var(--dim);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.connstat .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex-shrink:0}
+.connstat.live .dot{background:#3fbf6f}
+@media(max-width:480px){.connstat .lbl{display:none}}
+.logo{font-size:18px;font-weight:700;color:var(--accent-h);white-space:nowrap;margin-right:4px}
+.srch{flex:1;position:relative}
+.srch input{width:100%;padding:7px 12px 7px 34px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:13px;outline:none}
+.srch input:focus{border-color:var(--accent)}
+.srch::before{content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none}
+.hbtn{background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;padding:6px;border-radius:8px;line-height:1;transition:background .15s,color .15s}
+.hbtn:hover{background:var(--surface2);color:var(--text)}
+
+/* Filters */
+.filters{padding:10px 16px;display:flex;gap:6px;overflow-x:auto;background:var(--surface);border-bottom:1px solid var(--border);scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.chip{padding:4px 13px;border-radius:14px;border:1px solid var(--border);background:transparent;color:var(--dim);font-size:12px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip:hover:not(.on){border-color:var(--accent);color:var(--text)}
+
+/* Upload progress bar */
+.upbar{display:none;align-items:center;gap:10px;padding:8px 16px;background:var(--accent);color:#fff;font-size:13px;font-weight:500}
+.upbar.on{display:flex}
+.upbar.err{background:var(--danger)}
+
+/* Main area */
+.main{flex:1;padding:16px}
+.count{color:var(--dim);font-size:12px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+
+/* Cards */
+.card{background:var(--surface);border-radius:10px;padding:12px 14px;cursor:pointer;transition:transform .15s,box-shadow .15s;display:flex;gap:11px;align-items:flex-start;position:relative;overflow:hidden}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:10px 0 0 10px}
+.card.t-link::before{background:var(--c-link)}.card.t-image::before{background:var(--c-image)}
+.card.t-video::before{background:var(--c-video)}.card.t-audio::before{background:var(--c-audio)}
+.card.t-document::before{background:var(--c-document)}.card.t-text::before{background:var(--c-text)}
+.card.t-archive::before{background:var(--c-archive)}.card.t-apk::before{background:var(--c-apk)}
+.card.t-contact::before{background:var(--c-contact)}.card.t-other::before{background:var(--c-other)}
+.card-thumb{width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0}
+.card-icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+.card-body{flex:1;min-width:0}
+.card-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.card-sub{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.card-foot{display:flex;gap:7px;align-items:center}
+.card-date{font-size:11px;color:var(--dim)}
+.badge{font-size:10px;background:rgba(33,150,243,.18);color:#64b5f6;padding:1px 6px;border-radius:8px}
+.pinned{font-size:10px}
+
+/* Empty / loading */
+.empty,.loading{text-align:center;padding:60px 20px;color:var(--dim)}
+.empty .ico{font-size:44px;margin-bottom:10px}
+.empty h3{font-size:16px;margin-bottom:6px;color:var(--text)}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.overlay.on{display:flex}
+@media(min-width:600px){.overlay{align-items:center}}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:22px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto}
+@media(min-width:600px){.modal{border-radius:20px}}
+.mhdr{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.micon{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0}
+.micon.txt{font-size:28px;display:flex;align-items:center;justify-content:center}
+.mtitle{flex:1;font-size:16px;font-weight:600;word-break:break-word}
+.mclose{background:none;border:none;color:var(--dim);cursor:pointer;font-size:22px;padding:2px;line-height:1}
+.mmeta{color:var(--dim);font-size:12px;margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap}
+.mcontent{background:var(--surface2);border-radius:8px;padding:12px;font-size:13px;line-height:1.6;word-break:break-word;max-height:180px;overflow-y:auto;margin-bottom:14px;white-space:pre-wrap}
+.mactions{display:flex;gap:8px;flex-wrap:wrap}
+.mbtn{flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;padding:9px 18px;border-radius:8px;border:none;font-size:13px;font-weight:500;cursor:pointer;transition:opacity .2s}
+.mbtn:hover{opacity:.82}
+.mbtn.pri{background:var(--accent);color:#fff}
+.mbtn.neu{background:var(--surface2);color:var(--text)}
+.mbtn.lnk{background:rgba(33,150,243,.2);color:#64b5f6}
+.mbtn.del{background:var(--danger);color:#fff}
+
+/* Settings */
+#settings{display:none;padding:16px;max-width:520px;margin:0 auto}
+#settings.on{display:block}
+#settings h2{font-size:20px;margin-bottom:20px}
+.sec{background:var(--surface);border-radius:10px;padding:18px;margin-bottom:14px}
+.sec h3{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.srow{margin-bottom:12px}
+.srow label{display:block;font-size:13px;margin-bottom:5px}
+.srow input{width:100%;padding:9px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none}
+.srow input:focus{border-color:var(--accent)}
+.snote{font-size:11px;color:var(--dim);margin-top:3px}
+.sbtn{padding:9px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s}
+.sbtn:hover{background:var(--accent-h)}
+.sstatus{font-size:12px;margin-top:8px}
+.back{background:none;border:none;color:var(--dim);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;margin-bottom:18px;padding:4px 0}
+.back:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login">
+  <div class="lcard">
+    <h1 style="display:flex;align-items:center;gap:10px"><svg width="34" height="34" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="border-radius:8px;flex-shrink:0"><defs><linearGradient id="gL" x1="0" y1="26" x2="0" y2="67" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFC246"/><stop offset="1" stop-color="#FF8F00"/></linearGradient></defs><rect width="108" height="108" fill="#1A237E"/><path fill="url(#gL)" d="M47,26 L61,26 L61,46 L69,46 L54,67 L39,46 L47,46 Z"/><path fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" d="M38,69 L44,81 L64,81 L70,69"/></svg>Stash</h1>
+    <p>Sign in to access your stash</p>
+    <div class="ibg">
+      <label for="pw">Password</label>
+      <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="login-btn">Sign In</button>
+    <div class="err" id="login-err">Incorrect password.</div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="hdr">
+    <span class="logo" id="brand" title="Home" style="display:flex;align-items:center;gap:8px;cursor:pointer"><svg width="24" height="24" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px;flex-shrink:0"><defs><linearGradient id="gH" x1="0" y1="26" x2="0" y2="67" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFC246"/><stop offset="1" stop-color="#FF8F00"/></linearGradient></defs><rect width="108" height="108" fill="#1A237E"/><path fill="url(#gH)" d="M47,26 L61,26 L61,46 L69,46 L54,67 L39,46 L47,46 Z"/><path fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" d="M38,69 L44,81 L64,81 L70,69"/></svg>Stash</span>
+    <div class="srch"><input type="text" id="srch" placeholder="Search…"></div>
+    <span class="connstat" id="connstat" title="Connection status"><span class="dot"></span><span class="lbl">—</span></span>
+    <button class="hbtn" id="upload-btn" title="Upload file">⬆️</button>
+    <button class="hbtn" id="settings-btn" title="Settings">⚙️</button>
+    <input type="file" id="upload-input" style="display:none">
+  </div>
+  <div class="upbar" id="upbar"><span id="upbar-text">Uploading…</span></div>
+  <div class="filters" id="filters">
+    <button class="chip on" data-t="">All</button>
+    <button class="chip" data-t="link">🔗 Links</button>
+    <button class="chip" data-t="text">📝 Text</button>
+    <button class="chip" data-t="image">🖼 Images</button>
+    <button class="chip" data-t="video">🎥 Videos</button>
+    <button class="chip" data-t="audio">🎵 Audio</button>
+    <button class="chip" data-t="document">📄 Documents</button>
+    <button class="chip" data-t="archive">📦 Archives</button>
+    <button class="chip" data-t="apk">📱 Apps</button>
+    <button class="chip" data-t="contact">📇 Contacts</button>
+    <button class="chip" data-t="other">🗂 Other</button>
+  </div>
+
+  <!-- Items view -->
+  <div class="main" id="items-view">
+    <div class="loading">Loading…</div>
+  </div>
+
+  <!-- Settings view -->
+  <div id="settings">
+    <button class="back" id="back-btn">← Back</button>
+    <h2>Settings</h2>
+
+    <div class="sec">
+      <h3>Quick connect</h3>
+      <p class="snote" style="margin-bottom:12px">Generate a QR code the Stash app can scan to configure itself automatically (includes password &amp; fingerprint).</p>
+      <button class="sbtn" id="s-qr-btn" style="margin-bottom:12px">Show QR</button>
+      <div id="s-qr-section" style="display:none">
+        <div id="s-qr-wrap" style="background:#fff;border-radius:10px;padding:10px;display:inline-block;margin-bottom:8px">
+          <div id="s-qr" style="width:180px;height:180px;display:flex;align-items:center;justify-content:center;color:#666;font-size:12px">Loading…</div>
+        </div>
+        <div id="s-qr-url" class="snote" style="word-break:break-all;font-family:monospace;margin-bottom:8px"></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>Server addresses</h3>
+      <div class="srow">
+        <label>Sync port (WebSocket)</label>
+        <input type="text" id="s-bind" placeholder="0.0.0.0:9876">
+      </div>
+      <div class="srow">
+        <label>Web UI port</label>
+        <input type="text" id="s-web" placeholder="0.0.0.0:9877">
+      </div>
+      <p class="snote" style="margin-bottom:10px">⚠ Address changes require a server restart</p>
+      <button class="sbtn" id="save-addr">Save</button>
+      <div class="sstatus" id="addr-status"></div>
+    </div>
+
+    <div class="sec">
+      <h3>TLS (encrypted connections)</h3>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="checkbox" id="s-tls"> Serve sync over TLS (wss://)
+      </label>
+      <p class="snote" id="s-tls-fp" style="margin-bottom:8px;word-break:break-all"></p>
+      <p class="snote" style="margin-bottom:10px">⚠ Requires a restart. A self-signed certificate is generated automatically; clients pin its fingerprint on first connect.</p>
+      <button class="sbtn" id="save-tls">Save TLS</button>
+      <div class="sstatus" id="tls-status"></div>
+    </div>
+
+    <div class="sec">
+      <h3>Change password</h3>
+      <div class="srow">
+        <label>New password</label>
+        <input type="password" id="s-pw1" placeholder="New password">
+      </div>
+      <div class="srow">
+        <label>Confirm password</label>
+        <input type="password" id="s-pw2" placeholder="Confirm">
+      </div>
+      <button class="sbtn" id="save-pw">Change Password</button>
+      <div class="sstatus" id="pw-status"></div>
+    </div>
+
+    <div class="sec">
+      <h3>Mirror peer</h3>
+      <p class="snote" style="margin-bottom:10px">Bidirectional sync with another Stash server. Leave host blank to disable.</p>
+      <div class="srow">
+        <label>Peer host:port</label>
+        <input type="text" id="s-mirror-host" placeholder="192.168.1.x:9876">
+      </div>
+      <div class="srow">
+        <label>Peer password</label>
+        <input type="password" id="s-mirror-pw" placeholder="Leave blank to keep existing">
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="checkbox" id="s-mirror-tls"> Connect to peer over TLS (wss://)
+      </label>
+      <div class="srow">
+        <label>Peer cert fingerprint (optional — pins the peer)</label>
+        <input type="text" id="s-mirror-fp" placeholder="AA:BB:CC:… (from the peer's startup log)">
+      </div>
+      <button class="sbtn" id="save-mirror">Save Mirror</button>
+      <div class="sstatus" id="mirror-status"></div>
+    </div>
+
+    <div class="sec">
+      <h3>Server control</h3>
+      <p class="snote" style="margin-bottom:10px">Apply TLS / address / mirror changes that take effect only at startup.</p>
+      <button class="sbtn" id="restart-btn">Restart server</button>
+      <div class="sstatus" id="restart-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div class="overlay" id="overlay" onclick="maybeClose(event)">
+  <div class="modal" id="modal">
+    <div class="mhdr">
+      <div class="micon txt" id="m-icon"></div>
+      <span class="mtitle" id="m-title"></span>
+      <button class="mclose" onclick="closeModal()">✕</button>
+    </div>
+    <div class="mmeta" id="m-meta"></div>
+    <div class="mcontent" id="m-content" style="display:none"></div>
+    <div class="mactions" id="m-actions"></div>
+  </div>
+</div>
+
+<script>
+const EMOJI={link:'🔗',text:'📝',image:'🖼',video:'🎥',audio:'🎵',document:'📄',archive:'📦',apk:'📱',contact:'📇',other:'🗂'};
+const LABELS={link:'Links',text:'Text',image:'Images',video:'Videos',audio:'Audio',document:'Documents',archive:'Archives',apk:'Apps',contact:'Contacts',other:'Other'};
+let items=[], activeType='', searchQ='', itemById={};
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function tryLogin(){
+  const pw=document.getElementById('pw').value;
+  if(!pw) return;
+  const btn=document.getElementById('login-btn');
+  btn.textContent='Signing in…'; btn.disabled=true;
+  const errEl=document.getElementById('login-err');
+  errEl.style.display='none';
+  try{
+    const r=await fetch('/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'password='+encodeURIComponent(pw)});
+    if(r.ok){ sessionStorage.setItem('stash_pw',pw); await loadItems(); }
+    else{ errEl.style.display='block'; }
+  }catch(e){ errEl.textContent='Connection error.'; errEl.style.display='block'; }
+  btn.textContent='Sign In'; btn.disabled=false;
+}
+document.getElementById('login-btn').onclick=tryLogin;
+document.getElementById('pw').onkeydown=e=>{ if(e.key==='Enter') tryLogin(); };
+
+function showLogin(){ document.getElementById('login').style.display='flex'; document.getElementById('app').classList.remove('on'); stopStatusPolling(); }
+function showApp()  { document.getElementById('login').style.display='none';  document.getElementById('app').classList.add('on'); startStatusPolling(); }
+
+// ── Connection status pill ──────────────────────────────────────────────────────
+let statusTimer=null;
+async function refreshStatus(){
+  try{
+    const r=await fetch('/api/status');
+    if(r.status===401){ showLogin(); return; }
+    if(!r.ok) return;
+    const d=await r.json();
+    const el=document.getElementById('connstat');
+    const clients=d.clients||0;
+    let txt=clients+' client'+(clients===1?'':'s');
+    let title=clients+' client'+(clients===1?'':'s')+' connected';
+    if(d.mirror_configured){
+      const m=d.mirror_connected||0;
+      txt+=' · mirror '+(m>0?'✓':'✗');
+      title+=' · mirror '+(m>0?'connected':'disconnected');
+    }
+    el.querySelector('.lbl').textContent=txt;
+    el.title=title;
+    el.classList.toggle('live', clients>0);
+  }catch(e){}
+}
+function startStatusPolling(){ refreshStatus(); refreshItems(); if(!statusTimer) statusTimer=setInterval(()=>{ refreshStatus(); refreshItems(); },5000); }
+function stopStatusPolling(){ if(statusTimer){ clearInterval(statusTimer); statusTimer=null; } }
+
+// ── Items ─────────────────────────────────────────────────────────────────────
+async function loadItems(){
+  const r=await fetch('/api/items');
+  if(r.status===401){ showLogin(); return; }
+  if(!r.ok){ document.getElementById('items-view').innerHTML='<div class="empty"><div class="ico">⚠️</div><h3>Error loading items</h3></div>'; showApp(); return; }
+  items=await r.json();
+  itemById={};
+  items.forEach(i=>itemById[i.id]=i);
+  lastItemsJson=JSON.stringify(items);
+  render(); showApp();
+}
+
+// Poll the item list so the view stays live (new stashes, downloads, deletes) without a manual
+// refresh. Only re-renders when the data actually changed, to avoid resetting scroll every tick.
+let lastItemsJson='';
+async function refreshItems(){
+  if(document.getElementById('settings').classList.contains('on')) return;
+  try{
+    const r=await fetch('/api/items',{cache:'no-store'});
+    if(r.status===401){ showLogin(); return; }
+    if(!r.ok) return;
+    const data=await r.json();
+    const js=JSON.stringify(data);
+    if(js===lastItemsJson) return;
+    lastItemsJson=js;
+    items=data; itemById={}; items.forEach(i=>itemById[i.id]=i);
+    render();
+  }catch(e){}
+}
+
+function fmtDate(ts){
+  const d=new Date(ts), now=new Date();
+  const diff=now-d;
+  if(diff<86400000) return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  if(d.getFullYear()===now.getFullYear()) return d.toLocaleDateString([],{month:'short',day:'numeric'});
+  return d.toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+}
+
+// C2 guard: esc() HTML-encodes all user-supplied strings before they are interpolated
+// into innerHTML template literals (e.g. card titles, subtitles in the grid).
+// Without this, an item whose title contained "<img src=x onerror=alert(1)>" would
+// execute arbitrary JavaScript in the web UI's origin.
+// All item.title, item.content, and item.mime_type values MUST go through esc()
+// before being placed inside innerHTML strings.  Fields displayed via textContent
+// (e.g. m-title, m-meta, m-content) are safe without escaping — the browser never
+// interprets textContent as HTML.
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function render(){
+  const view=document.getElementById('items-view');
+  let list=items;
+  if(activeType) list=list.filter(i=>i.type===activeType);
+  if(searchQ){ const q=searchQ.toLowerCase(); list=list.filter(i=>(i.title||'').toLowerCase().includes(q)||(i.content||'').toLowerCase().includes(q)); }
+
+  if(!list.length){
+    view.innerHTML='<div class="empty"><div class="ico">📭</div><h3>No items</h3><p>Nothing matches that filter</p></div>'; return;
+  }
+  const isTextLike = t => t==='text'||t==='link';
+  const cards=list.map(item=>{
+    const t=item.type||'other';
+    const emoji=EMOJI[t]||'📎';
+    const title=item.title||item.content?.slice(0,60)||'(untitled)';
+    const sub=item.mime_type||(LABELS[t]||t);
+    const date=fmtDate(item.created_at);
+    const cloud=!item.has_file&&!isTextLike(t)?'<span class="badge">☁ cloud</span>':'';
+    const pin=item.is_pinned?'<span class="pinned">📌</span>':'';
+
+    let iconEl;
+    if(item.thumbnail_b64){
+      const img=document.createElement('img'); img.className='card-thumb';
+      img.setAttribute('src','data:image/jpeg;base64,'+item.thumbnail_b64); img.alt='';
+      iconEl=img.outerHTML;
+    } else {
+      iconEl=`<div class="card-icon">${emoji}</div>`;
+    }
+    return `<div class="card t-${t}" onclick="openModal('${item.id}')">
+      ${iconEl}
+      <div class="card-body">
+        <div class="card-title">${esc(title)}</div>
+        <div class="card-sub">${esc(sub)}</div>
+        <div class="card-foot"><span class="card-date">${date}</span>${pin}${cloud}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  view.innerHTML=`<div class="count">${list.length} item${list.length!==1?'s':''}</div><div class="grid">${cards}</div>`;
+}
+
+// ── Filters & search ──────────────────────────────────────────────────────────
+document.getElementById('filters').addEventListener('click',e=>{
+  const chip=e.target.closest('.chip'); if(!chip) return;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  chip.classList.add('on');
+  activeType=chip.dataset.t;
+  render();
+});
+let stimer;
+document.getElementById('srch').addEventListener('input',e=>{ clearTimeout(stimer); stimer=setTimeout(()=>{ searchQ=e.target.value.trim(); render(); },200); });
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(id){
+  const item=itemById[id]; if(!item) return;
+  const t=item.type||'other';
+  const isTextLike = t==='text'||t==='link';
+  const emoji=EMOJI[t]||'📎';
+  const title=item.title||item.content?.slice(0,60)||'(untitled)';
+
+  // Icon or thumbnail
+  const iconEl=document.getElementById('m-icon');
+  if(item.thumbnail_b64){
+    const img=document.createElement('img'); img.className='micon';
+    img.setAttribute('src','data:image/jpeg;base64,'+item.thumbnail_b64); img.alt='';
+    iconEl.innerHTML=''; iconEl.appendChild(img);
+  } else {
+    iconEl.className='micon txt'; iconEl.textContent=emoji;
+  }
+
+  document.getElementById('m-title').textContent=title;
+  const date=new Date(item.created_at).toLocaleString();
+  let meta=date;
+  if(item.mime_type) meta+=` · ${item.mime_type}`;
+  document.getElementById('m-meta').textContent=meta;
+
+  const contentEl=document.getElementById('m-content');
+  if(isTextLike && item.content){ contentEl.textContent=item.content; contentEl.style.display='block'; }
+  else { contentEl.style.display='none'; }
+
+  const act=document.getElementById('m-actions');
+  act.innerHTML='';
+  function mkBtn(cls,label,handler){ const b=document.createElement('button'); b.className='mbtn '+cls; b.textContent=label; b.addEventListener('click',handler); act.appendChild(b); return b; }
+  if(t==='link'){
+    // C3 guard: window.open is only called when the URL starts with http:// or https://.
+    // This prevents javascript: URIs (and other dangerous schemes like data:, blob:, vbscript:)
+    // from being executed via the "Open Link" button.  A link item whose content was set to
+    // "javascript:alert(1)" would otherwise run arbitrary JS in the web UI origin.
+    mkBtn('lnk','🔗 Open Link',()=>{ const u=item.content; if(u&&(u.startsWith('https://')||u.startsWith('http://'))) window.open(u,'_blank'); });
+    mkBtn('neu','📋 Copy URL',()=>{ navigator.clipboard?.writeText(item.content); });
+  } else if(t==='text'){
+    mkBtn('pri','📋 Copy Text',()=>{ navigator.clipboard?.writeText(item.content); });
+  } else if(item.has_file){
+    mkBtn('pri','⬇ Download',()=>{ window.location.href='/api/file/'+item.id; });
+  } else {
+    const s=document.createElement('span'); s.style.cssText='color:var(--dim);font-size:13px'; s.textContent='☁ Only available on the sync server — download from the app'; act.appendChild(s);
+  }
+  mkBtn('del','🗑 Delete',async()=>{
+    if(!confirm('Delete this item? This cannot be undone.')) return;
+    const r=await fetch('/api/items/'+item.id,{method:'DELETE'});
+    if(r.status===401){ closeModal(); showLogin(); return; }
+    if(r.ok){ closeModal(); items=items.filter(i=>i.id!==item.id); itemById={}; items.forEach(i=>itemById[i.id]=i); lastItemsJson=JSON.stringify(items); render(); }
+    else { alert('Delete failed: '+(await r.text())); }
+  });
+
+  document.getElementById('overlay').classList.add('on');
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('on'); }
+function maybeClose(e){ if(e.target===document.getElementById('overlay')) closeModal(); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+
+// ── Upload ──────────────────────────────────────────────────────────────────────
+const uploadInput=document.getElementById('upload-input');
+document.getElementById('upload-btn').onclick=()=>uploadInput.click();
+uploadInput.addEventListener('change',()=>{
+  const file=uploadInput.files&&uploadInput.files[0];
+  if(!file) return;
+  uploadFile(file);
+  uploadInput.value=''; // allow re-selecting the same file later
+});
+function uploadFile(file){
+  const bar=document.getElementById('upbar'), txt=document.getElementById('upbar-text');
+  bar.className='upbar on'; txt.textContent='Uploading '+file.name+'…';
+  const fd=new FormData(); fd.append('file',file,file.name);
+  const xhr=new XMLHttpRequest();
+  xhr.open('POST','/api/upload');
+  xhr.upload.onprogress=e=>{ if(e.lengthComputable){ const pct=Math.round(e.loaded/e.total*100); txt.textContent='Uploading '+file.name+'… '+pct+'%'; } };
+  xhr.onload=()=>{
+    if(xhr.status===401){ bar.className='upbar'; showLogin(); return; }
+    if(xhr.status===200){ txt.textContent='✓ '+file.name+' uploaded'; refreshItems(); setTimeout(()=>{ bar.className='upbar'; },1800); }
+    else { bar.className='upbar on err'; txt.textContent='✗ Upload failed: '+(xhr.responseText||xhr.status); setTimeout(()=>{ bar.className='upbar'; },3500); }
+  };
+  xhr.onerror=()=>{ bar.className='upbar on err'; txt.textContent='✗ Upload failed (network error)'; setTimeout(()=>{ bar.className='upbar'; },3500); };
+  xhr.send(fd);
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+document.getElementById('settings-btn').onclick=async()=>{
+  document.getElementById('items-view').style.display='none';
+  document.getElementById('settings').classList.add('on');
+  const r=await fetch('/api/settings');
+  if(r.status===401){ showLogin(); return; }
+  if(r.ok){ const d=await r.json();
+    document.getElementById('s-bind').value=d.bind||'';
+    document.getElementById('s-web').value=d.web_bind||'';
+    document.getElementById('s-mirror-host').value=d.mirror_host||'';
+    document.getElementById('s-tls').checked=!!d.tls_enabled;
+    document.getElementById('s-mirror-tls').checked=!!d.mirror_tls;
+    document.getElementById('s-mirror-fp').value=d.mirror_fingerprint||'';
+  }
+  // Show this server's own cert fingerprint (for pinning on clients / the mirror peer).
+  const sr=await fetch('/api/status'); const fpEl=document.getElementById('s-tls-fp');
+  if(sr.ok){ const s=await sr.json(); fpEl.textContent=s.tls_enabled&&s.tls_fingerprint?("This server's cert: "+s.tls_fingerprint):''; }
+};
+document.getElementById('back-btn').onclick=()=>{
+  document.getElementById('settings').classList.remove('on');
+  document.getElementById('items-view').style.display='';
+};
+// Clicking the logo returns to the main list (closes settings, clears the search).
+document.getElementById('brand').onclick=()=>{
+  document.getElementById('settings').classList.remove('on');
+  document.getElementById('items-view').style.display='';
+  const s=document.getElementById('srch');
+  if(s && s.value){ s.value=''; s.dispatchEvent(new Event('input')); }
+};
+
+document.getElementById('s-qr-btn').onclick=async()=>{
+  const section=document.getElementById('s-qr-section');
+  const qrEl=document.getElementById('s-qr');
+  const qrUrl=document.getElementById('s-qr-url');
+  section.style.display='block';
+  qrEl.textContent='Loading…'; qrEl.style.cssText='width:180px;height:180px;display:flex;align-items:center;justify-content:center;color:#666;font-size:12px';
+  try {
+    const cr=await fetch('/api/connection-info');
+    if(cr.ok){ const c=await cr.json(); qrEl.innerHTML=c.qr_svg; qrEl.style.cssText=''; qrUrl.textContent=c.url; }
+    else { qrEl.textContent='Unavailable'; }
+  } catch(e) { qrEl.textContent='Error'; }
+};
+
+document.getElementById('save-addr').onclick=async()=>{
+  const st=document.getElementById('addr-status');
+  st.textContent='Saving…'; st.style.color='var(--dim)';
+  const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({bind:document.getElementById('s-bind').value, web_bind:document.getElementById('s-web').value})});
+  const msg=await r.text();
+  st.textContent=(r.ok?'✓ ':'✗ ')+msg; st.style.color=r.ok?'var(--text)':'var(--danger)';
+};
+
+document.getElementById('save-pw').onclick=async()=>{
+  const pw1=document.getElementById('s-pw1').value, pw2=document.getElementById('s-pw2').value;
+  const st=document.getElementById('pw-status');
+  if(!pw1){ st.textContent='Enter a new password.'; st.style.color='var(--danger)'; return; }
+  if(pw1!==pw2){ st.textContent='✗ Passwords do not match.'; st.style.color='var(--danger)'; return; }
+  st.textContent='Saving…'; st.style.color='var(--dim)';
+  const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({new_password:pw1})});
+  const msg=await r.text();
+  if(r.ok){
+    st.textContent='✓ Password changed — please sign in again.'; st.style.color='var(--text)';
+    document.getElementById('s-pw1').value=''; document.getElementById('s-pw2').value='';
+    setTimeout(()=>{ showLogin(); },2000);
+  } else {
+    st.textContent='✗ '+msg; st.style.color='var(--danger)';
+  }
+};
+
+document.getElementById('save-mirror').onclick=async()=>{
+  const st=document.getElementById('mirror-status');
+  st.textContent='Saving…'; st.style.color='var(--dim)';
+  const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      mirror_host:document.getElementById('s-mirror-host').value.trim(),
+      mirror_password:document.getElementById('s-mirror-pw').value,
+      mirror_tls:document.getElementById('s-mirror-tls').checked,
+      mirror_fingerprint:document.getElementById('s-mirror-fp').value.trim()
+    })});
+  const msg=await r.text();
+  st.textContent=(r.ok?'✓ ':'✗ ')+msg; st.style.color=r.ok?'var(--text)':'var(--danger)';
+  if(r.ok) document.getElementById('s-mirror-pw').value='';
+};
+
+document.getElementById('save-tls').onclick=async()=>{
+  const st=document.getElementById('tls-status');
+  st.textContent='Saving…'; st.style.color='var(--dim)';
+  const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({tls_enabled:document.getElementById('s-tls').checked})});
+  const msg=await r.text();
+  st.textContent=(r.ok?'✓ ':'✗ ')+msg; st.style.color=r.ok?'var(--text)':'var(--danger)';
+};
+
+document.getElementById('restart-btn').onclick=async()=>{
+  const st=document.getElementById('restart-status');
+  if(!confirm('Restart the server now? Connections will briefly drop.')) return;
+  st.textContent='Restarting…'; st.style.color='var(--dim)';
+  try{ await fetch('/api/restart',{method:'POST'}); }catch(e){}
+  // The server re-execs; poll until it answers again, then reload.
+  let tries=0;
+  const t=setInterval(async()=>{
+    tries++;
+    try{ const r=await fetch('/api/status',{cache:'no-store'}); if(r.ok||r.status===401){ clearInterval(t); st.textContent='✓ Back up — reloading…'; st.style.color='var(--text)'; setTimeout(()=>location.reload(),600);} }catch(e){}
+    if(tries>40){ clearInterval(t); st.textContent='Server did not come back — check it manually.'; st.style.color='var(--danger)'; }
+  },500);
+};
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadItems();
+</script>
+</body>
+</html>

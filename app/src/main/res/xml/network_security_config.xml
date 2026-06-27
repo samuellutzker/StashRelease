@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    TLS (wss://) is the default. Plain ws:// is available as an opt-in for users who run
+    a non-TLS LAN server. Android's network security config does not support IP-range /
+    CIDR wildcards, so we cannot enumerate arbitrary user-chosen LAN IPs in <domain>
+    entries. cleartext is therefore permitted at the base level, but is only exercised when
+    the user explicitly disables TLS in settings.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

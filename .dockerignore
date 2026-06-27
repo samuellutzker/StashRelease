@@ -1,0 +1,6 @@
+.git
+app/
+ios/
+*.md
+*.apk
+server/target/
